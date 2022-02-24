@@ -10,9 +10,11 @@ class Image extends Model
 {
     use HasFactory;
 
+    protected $fillable = ['title', 'file', 'dimensions', 'user_id', 'slug'];
+
     public static function makeDirectory()
     {
-        $subFolder = 'images/'.date('Y/m/d');
+        $subFolder = 'images/' . date('Y/m/d');
         Storage::makeDirectory($subFolder);
 
         return $subFolder;
@@ -27,16 +29,55 @@ class Image extends Model
 
     public function scopePublished($query)
     {
-        return $query->where('is_published',true);
+        return $query->where('is_published', true);
     }
 
     public function fileUrl()
     {
         return Storage::url($this->file);
     }
-    
+
     public function permalink()
     {
-        return route('images.show',$this->slug);
+        return $this->slug ? route('images.show', $this->slug) : '#';
+    }
+
+    public function route($method, $key = 'id')
+    {
+        return route("images.{$method}", $this->$key);
+    }
+
+    public function getSlug()
+    {
+        # code...
+        $slug  = str($this->title)->slug();
+        $slugCount = static::where('slug', 'regexp', '^' . $slug . '(-[0-9])?')->count();
+
+        if ($slugCount > 0) {
+            return $slug . "-" . $slugCount + 1;
+        }
+
+        return $slug;
+    }
+
+    protected static function booted()
+    {
+        static::creating(function ($image) {
+            if ($image->title) {
+                $image->slug = $image->getSlug();
+                $image->is_published = true;
+            }
+        });
+
+        static::updating(function ($image) {
+            if ($image->title && !$image->slug) {
+                $image->slug = $image->getSlug();
+                $image->is_published = true;
+            }
+        });
+
+        static::deleted(function ($image) {
+            Storage::delete($image->file);
+        });
     }
 }

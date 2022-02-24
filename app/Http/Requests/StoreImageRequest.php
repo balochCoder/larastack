@@ -24,25 +24,31 @@ class StoreImageRequest extends FormRequest
      */
     public function rules()
     {
+        if ($this->method() == 'PUT') {
+            return [
+                'title' => 'required'
+            ];
+        }
         return [
-            'file'=>'required|image',
-            'title'=>'nullable'
+            'file' => 'required|image',
+            'title' => 'nullable'
         ];
     }
 
     public function getData()
     {
-        $data  = $this->validate() + [
-            'user_id'=>1
+        $data  = $this->validated() + [
+            'user_id' => 1
         ];
 
         if ($this->hasFile('file')) {
             $directory = Image::makeDirectory();
             $data['file'] = $this->file->store($directory);
 
-            $data['image'] = Image::getDimension($data['file']); 
+            $data['dimensions'] = Image::getDimension($data['file']);
         }
-
         return $data;
     }
+
+    
 }
